@@ -1,0 +1,27 @@
+credit_risk_playground:
+  target: fra-local_live
+  outputs:
+    fra-local_live:
+      dbname: n26
+      host: n26-dwh.cfxsmcyyfcch.eu-central-1.redshift.amazonaws.com
+      password: "{{ env_var('REDSHIFT_PASSWORD')}}"
+      port: 5439
+      schema: credit_risk_playground
+      threads: 1
+      type: redshift
+      user: "{{ env_var('REDSHIFT_USER')}}"
+      
+jaffle_shop:
+  outputs:
+    dev:
+      dbname: n26
+      host: n26-dwh.cfxsmcyyfcch.eu-central-1.redshift.amazonaws.com
+      password: qDNDDocXBHGGRNL9qmzFam8o7XeNyhcLiQTxWdEfX9DutJHFqi
+      port: 5439
+      schema: credit_risk_playground
+      threads: 1
+      type: redshift
+      user: ilya_katliarou_reader
+  target: dev
+send_anonymous_usage_stats: false
+use_colors: false

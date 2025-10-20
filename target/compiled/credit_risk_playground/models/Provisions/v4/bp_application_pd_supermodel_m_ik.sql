@@ -1,0 +1,132 @@
+
+
+
+with 
+
+first_enabled_date as (
+select 
+user_id 
+, encoded_key
+, min(rev_timestamp) as first_creation_date
+, max(rev_timestamp) as last_creation_date
+from "n26"."credit_risk_playground"."bp_overdraft_limit_periods_ik"
+where rev_timestamp::date <= '2025-06-11'::date and amount_cents > 0 
+group by 
+user_id 
+, encoded_key
+
+)
+
+, portfolio as (
+select * 
+from "n26"."credit_risk_playground"."bp_portfolio_customers_aud_m_ik"
+where reporting_date::date = '2025-06-11'::date
+)
+
+, pd_app_cc as (
+
+    select
+        c.user_id,
+        c.encoded_key,
+        ps.created::date as calculated_at, 
+        row_number() over (partition by c.encoded_key, c.user_id order by ps.created desc) as row_num,
+        pd,
+        rating_class,
+        ps.score_type
+    
+    from portfolio c 
+    inner join dbt_pii.credit_score_audit_log ps on c.user_id = ps.user_id 
+    inner join mmbr_loan_account li on  li.encoded_key = c.encoded_key 
+    inner join dbt.mmbr_loan_product_mapping mp on li.loan_name = mp.loan_name and mp.product in ('consumer_credit')
+    where ps.model_name = 'PORTO'
+          and ps.model_version = 'unified-1.0'
+          and ps.score_type in ('application_CC') -- IMPORTANT! Application scores time is THE SAME , make 
+          and ps.created::date <= li.creation_date::date
+          and ps.created::date >= '2025-02-25'::date
+          and li.creation_date is not null
+     )
+     
+ , pd_app_tbil as (
+      select
+        c.user_id,
+        c.encoded_key,
+        ps.created::date as calculated_at, 
+        row_number() over (partition by c.encoded_key, c.user_id order by ps.created desc) as row_num,
+        pd,
+        rating_class,
+        ps.score_type
+    
+    from portfolio c 
+    inner join dbt_pii.credit_score_audit_log ps on c.user_id = ps.user_id 
+    inner join mmbr_loan_account li on  li.encoded_key = c.encoded_key 
+    inner join dbt.mmbr_loan_product_mapping mp on li.loan_name = mp.loan_name and mp.product in ('installment_loans')
+    where ps.model_name = 'PORTO'
+          and ps.model_version = 'unified-1.0'
+          and ps.score_type in ('application_TBIL') -- IMPORTANT! Application scores time is THE SAME , make 
+          and ps.created::date <= li.creation_date::date
+          and ps.created::date >= '2025-02-25'::date
+          and li.creation_date is not null
+ )
+ 
+ , pd_app_od as (
+      select
+        c.user_id,
+        c.encoded_key,
+        ps.created::date as calculated_at, 
+        row_number() over (partition by c.encoded_key, c.user_id order by ps.created desc) as row_num,
+        pd,
+        rating_class,
+        ps.score_type
+    
+    from portfolio c 
+    inner join dbt_pii.credit_score_audit_log ps on c.user_id = ps.user_id 
+    inner join first_enabled_date f on f.encoded_key = c.encoded_key 
+    where ps.model_name = 'PORTO'
+          and ps.model_version = 'unified-1.0'
+          and ps.score_type in ('application_OD') 
+          and ps.created::date <= f.first_creation_date::date
+          and ps.created::date >= '2025-02-25'::date
+          and f.first_creation_date is not null
+ )
+
+
+, porto_app as (
+    select
+        user_id
+        , encoded_key
+        , pd  as pd_2
+        , calculated_at
+        , rating_class 
+    from pd_app_cc 
+    where row_num = 1
+
+    union all 
+
+    select
+        user_id
+        , encoded_key
+        , pd  as pd_2
+        , calculated_at
+        , rating_class 
+    from pd_app_tbil
+    where row_num = 1
+
+    union all 
+
+    select
+        user_id
+        , encoded_key
+        , pd  as pd_2
+        , calculated_at
+        , rating_class 
+    from pd_app_od
+    where row_num = 1
+)
+
+select * 
+, '2025-06-11'::date as reporting_date
+, getdate() as etl_updated
+, coalesce(user_id, '') || coalesce(etl_updated::varchar, '') as unique_key
+from porto_app
+
+where etl_updated > (select max(etl_updated) from "n26"."credit_risk_playground"."bp_application_pd_supermodel_m_ik")

@@ -1,0 +1,167 @@
+version: 2
+
+sources:
+  - name: credit_risk_playground
+    schema: credit_risk_playground
+    description: credit_risk_playground credit-related self-made tables
+    tables:
+      - name: macroeconomic_inputs
+        description: inputs (from OECD) for macroeconomic features creation
+      - name: macroeconomic_inputs_v2
+        description: inputs (from new OECD website) for macroeconomic features creation
+      - name: bp_retail_provisions_stg_v5_pre
+        description: first part of provisions final table
+
+  - name: etl_reporting
+    schema: etl_reporting
+    description: etl_reporting credit-related audit tables
+    tables:
+      - name: lisbon_model_inputs
+        description: woe features (available from August 2022)
+      - name: lisbon_model_outputs
+        description: pd submodule scores (available from August 2022)
+      - name: lisbon_score_audit_log
+        description: pd and ratings audit log
+      - name: zr_transaction
+        description: transactions for tx classification
+      - name: cortisol_repayment_capacity
+        description: repayment capacity on user level
+      - name: cortisol_repayment_capacity_calculation_categories
+        description: repayment capacity on category level
+      - name: pa_paccount
+        description: protected accounts
+      - name: dw_audit_log
+        description: source for Fraud flags
+      - name: cmd_users
+        description: source for user information
+
+  - name: private
+    schema: private
+    description: private credit-related audit tables
+    tables:
+      - name: ca_credit_report_aud
+        description: audit table with credit bureau reports
+      - name: ca_credit_score_record_request_aud
+        description: schufa (DEU) reports with scores
+      - name: ca_credit_score_record_request_merkmal_aud
+        description: schufa (DEU) reports with merkmale
+      - name: californium_customer_attribute
+        description: Merkmales from Schufa
+      - name: einsteinium_repayment_capacity_audit_log
+        description: user repayment capacity (Cortisol)
+      - name: es_requested_repayment_capacity
+        description: user repayment capacity (Miami)
+      - name: einsteinium_internal_credit_score_audit_log
+        description: tbil scores
+      - name: es_requested_credit_score
+        description: requested credit scores (application)
+      - name: es_internal_credit_score
+        description: credit scores < Apr 2022
+      - name: einsteinium_n26_credit_score_audit_log
+        description: credit scores Apr - Nov 2022
+      - name: einsteinium_credit_score_audit_log
+        description: credit scores > Nov 2022
+      - name: miracle_days_past_due
+        description: Miracle, DPD
+      - name: miracle_unlikeliness_to_pay
+        description: Miracle, UTP
+
+  - name: dbt
+    schema: dbt
+    description: Data Analytics' dbt models
+    tables:
+      - name: bp_overdraft_users
+        description: overdraft limits and balances
+      - name: bank_products_users
+        description: monthly credit products data
+      - name: stg_user_detail
+        description: subscription data
+      - name: zrh_users
+        description: master table with users
+      - name: zrh_txn_day
+        description: daily transactions
+      - name: mmb_weekly_balance_aud
+        description: weekly balances Mambu
+      - name: write_off
+        description: write-offs table
+      - name: ucm_overdraft
+        description: interest income for overdrafts
+      - name: mmbr_user_match
+        description: to join user_id to mambu logs
+      - name: mmbr_repayment_aud
+        description: repayment logs in Mambu
+      - name: mmbr_loan_account_aud
+        description: this is an effort to reconcile mmb and mmbr tables
+      - name: card_transactions_pt
+        description: transactions for cards presentments
+      - name: zr_transaction_user
+        description: payment schemes
+      - name: device_tokens
+        description: device tokens
+      - name: login_attempts
+        description: login attempts
+      - name: bp_overdue_amounts_loans
+        description: overdue amounts for loan accounts per day
+
+  - name: public
+    schema: public
+    description: public sources
+    tables:
+      - name: dwh_cohort_months
+        description: end of months dates
+      - name: cmd_users
+        description: simpler version of zrh_users
+      - name: cmd_n26_tnc_address
+        description: address of users
+      - name: dwh_sneaky_transaction
+        description: deprecated
+      - name: mmbr_loan_transaction
+        description: loan transactions in Mambu
+      - name: mmbr_loan_account
+        description: loan accounts in Mambu
+      - name: mmb_loan_account_semi_aud
+        description: deprecated
+      - name: mcv_infocard_template
+        description: dunning infocards
+      - name: mmbr_n26_repayment_aud
+        description: Mambu repayments audit log
+      - name: mmbr_repayment
+        description: Mambu repayment schedule
+      - name: dwh_portfolio_status_aud
+        description: old dunning records
+      - name: la_action_log
+        description: lanthanum dunning logs
+      - name: neodymium_insolvency
+        description: internal bankruptcy log
+      - name: nd_participant
+        description: bankruptcy source
+      - name: nh_transaction_instalment_loan
+        description: nihonium tbil
+      - name: nihonium_eligibility_decision_audit
+        description: nihonium decision audit
+      - name: strontium_loan
+        description: strontium
+      - name: cc_credit_draft
+        description: consumer credit applications
+      - name: cc_credit_offer
+        description: consumer credit offers
+      - name: miracle_customer_default
+        description: Miracle defaults table
+      - name: amh_categories
+        description: Amherst categories table
+      - name: madrid_categorization
+        description: Madrid (TX classification) logs
+      - name: pu_overdraft_history
+        description: overdraft history
+      - name: mmbr_gl_account
+        description: GLs codes
+      - name: mmbr_gl_journal_entry
+        description: debit/credit transactions
+      - name: mmbr_savings_account
+        description: savings accounts info
+      - name: ddb_overdraft_settings_aud 
+        description: old overdraft logs
+      - name: dwh_cohort_dates
+        description: dates 
+      - name: plutonium_repayment_plan
+        description: repayment plan ph.1 history
