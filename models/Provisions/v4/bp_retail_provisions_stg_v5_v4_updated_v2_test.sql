@@ -1083,3 +1083,4 @@ from total
 {% if is_incremental() %}
 where etl_updated > (select max(etl_updated) from {{this}})
 {% endif %}
+

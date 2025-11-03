@@ -71,7 +71,7 @@ select
 user_created 
 , user_id 
 , rev_timestamp 
-, coalesce( lead(rev_timestamp) OVER (PARTITION BY user_created ORDER BY rev_timestamp) + interval'-0.000001 seconds' 
+, coalesce( lead(rev_timestamp) OVER (PARTITION BY user_id ORDER BY rev_timestamp) + interval'-0.000001 seconds' 
                   , '2100-01-01'::timestamp) as end_timestamp 
 , amount_cents 
 from plutonium

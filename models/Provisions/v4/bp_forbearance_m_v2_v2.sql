@@ -118,7 +118,7 @@ left join paccount_ts pa on pa.user_id = p.user_id
 left join garnishment g on g.customer_id = p.user_id 
                            and (
                                   (
-                                    g.status = 'CLOSE'
+                                    g.status = 'CLOSED'
                                       and p.credit_creation_date::timestamp between g.created::timestamp and g.updated::timestamp
                                   ) -- garnishment was active at the application, but now closed
                                   or 

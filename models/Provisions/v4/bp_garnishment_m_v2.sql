@@ -24,7 +24,7 @@ garnishment as (
 
    and (
             (
-            ng.status = 'CLOSE'
+            ng.status = 'CLOSED'
                 and last_day(date_add('month', -1, last_day(getdate()))) between ng.created::timestamp and ng.updated::timestamp
             ) -- garnishment was active at the application, but now closed
             or 

@@ -41,7 +41,36 @@ select
 c.user_id 
 --, c.instrument_id 
 , max(c.reportdate::date) as default_during_forbearance_date
-from "n26"."credit_risk_playground"."bp_retail_provisions_stg_v5_pre_updated_v2" c 
+from (
+   select 
+   instrument_id 
+   , user_id
+   , reportdate 
+   , is_default
+   from credit_risk_playground.bp_retail_provisions_stg_v5_pre_updated   -- from May 2024
+   where reportdate::date <= '2025-04-30'::date  
+
+   union all 
+
+   select 
+   instrument_id 
+   , user_id
+   , reportdate 
+   , is_default
+   from credit_risk_playground.bp_retail_provisions_stg_v5_pre_updated_ik  
+   where reportdate::date > '2025-04-30'::date  AND reportdate::date <=  '2025-05-31'::date
+
+   union all 
+
+
+   select 
+   instrument_id 
+   , user_id
+   , reportdate 
+   , is_default
+   from credit_risk_playground.bp_retail_provisions_stg_v5_pre_updated_v2
+   where reportdate::date > '2025-05-31'::date 
+) c --"n26"."credit_risk_playground"."bp_retail_provisions_stg_v5_pre_updated_v2" c 
 left join "n26"."credit_risk_playground"."bp_forbearance_m_v2_v2" f on c.instrument_id = f.instrument_id and c.reportdate::date = f.reportdate::date
 where (c.is_default = 1) and (f.instrument_id is not null)
 group by 1
@@ -52,7 +81,36 @@ select
 c.user_id 
 --, c.instrument_id 
 , max(c.reportdate::date) as last_default_date
-from "n26"."credit_risk_playground"."bp_retail_provisions_stg_v5_pre_updated_v2" c 
+from (
+   select 
+   instrument_id 
+   , user_id
+   , reportdate 
+   , is_default
+   from credit_risk_playground.bp_retail_provisions_stg_v5_pre_updated   -- from May 2024
+   where reportdate::date <= '2025-04-30'::date  
+
+   union all 
+
+   select 
+   instrument_id 
+   , user_id
+   , reportdate 
+   , is_default
+   from credit_risk_playground.bp_retail_provisions_stg_v5_pre_updated_ik  
+   where reportdate::date > '2025-04-30'::date  AND reportdate::date <=  '2025-05-31'::date
+
+   union all 
+
+
+   select 
+   instrument_id 
+   , user_id
+   , reportdate 
+   , is_default
+   from credit_risk_playground.bp_retail_provisions_stg_v5_pre_updated_v2
+   where reportdate::date > '2025-05-31'::date 
+) c 
 where (c.is_default = 1) 
 group by 1
 )
@@ -95,7 +153,9 @@ c.user_id
 , c.schufa_insolvency
 , c.rep_plan_user
 
-, c.is_default
+, case when (df.user_id is not null) 
+            and (c.reportdate::date between df.default_during_forbearance_date::date and date_add('month', 12, df.default_during_forbearance_date::date)) then 1
+       else c.is_default end as is_default
 
 
 -- 6. Credit Bureau flags
@@ -925,25 +985,19 @@ END AS "DXAUD"
 -- RISGR
 
 , CASE
-    WHEN c.is_default = 1 THEN
-        GREATEST(
-            COALESCE(c.credit_creation_date, DATE '0001-01-01'),
-            COALESCE(
-                CASE 
-                    WHEN d.user_id IS NOT NULL THEN d.default_date
-                    WHEN ins.user_id IS NOT NULL THEN ins.internal_insolvency_date
-                    WHEN sch.user_id IS NOT NULL THEN c.schufa_rating_date
-                    WHEN df.user_id IS NOT NULL
-                         AND c.reportdate::date BETWEEN df.default_during_forbearance_date::date 
-                                                   AND date_add('month', 12, df.default_during_forbearance_date::date)
-                    THEN df.default_during_forbearance_date::date
-                    WHEN c.dpd > 90 THEN date_add('day', 90, c.start_in_arrears)
-                END,
-                DATE '0001-01-01'
-            )
-        )
-    ELSE NULL
-END AS "DXNPE"
+      WHEN d.user_id IS NOT NULL THEN 
+          COALESCE(GREATEST(c.credit_creation_date, d.default_date), d.default_date)
+      WHEN ins.user_id IS NOT NULL THEN 
+          COALESCE(GREATEST(c.credit_creation_date, ins.internal_insolvency_date), ins.internal_insolvency_date)
+      WHEN sch.user_id IS NOT NULL THEN 
+          COALESCE(GREATEST(c.credit_creation_date, c.schufa_rating_date), c.schufa_rating_date)
+      WHEN df.user_id IS NOT NULL
+           AND c.reportdate::date BETWEEN df.default_during_forbearance_date::date 
+                                     AND date_add('month', 12, df.default_during_forbearance_date::date)
+      THEN COALESCE(GREATEST(c.credit_creation_date, df.default_during_forbearance_date::date), df.default_during_forbearance_date::date)
+      WHEN c.dpd > 90 THEN 
+          COALESCE(GREATEST(c.credit_creation_date, date_add('day', 90, c.start_in_arrears)), date_add('day', 90, c.start_in_arrears))
+  END AS "DXNPE"
 
 , case when is_default = 1 and max(case when c.product_flag in ('RP_2') then 1 else 0 end) over(partition by c.user_id) = 1 
             then max(fb.credit_creation_date) over(partition by c.user_id) end as "DXFBE"

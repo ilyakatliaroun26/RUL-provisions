@@ -1,13 +1,16 @@
 
-{{
-  config(
-    materialized = "incremental",
-    dist='instrument_id',
-    sort='etl_updated',
-    unique_key="unique_key",
-    tags=["retail_provisions"]
-    )
-}}
+      
+  
+    
+
+  create  table
+    "n26"."credit_risk_playground"."bp_retail_provisions_stg_v5_v4_updated_v2_test"
+    
+    diststyle key distkey (instrument_id)
+    
+      compound sortkey(etl_updated)
+  as (
+    
 
 -- dbt run --full-refresh --select bp_retail_provisions_stg_v5_v4_updated_v2 (first time)
 -- dbt run --select bp_retail_provisions_stg_v5_v4_updated_v2 (other runs)
@@ -19,7 +22,7 @@ select user_id
 , encoded_key
 , min(rev_timestamp) as first_creation_date
 , max(rev_timestamp) as last_creation_date
-from {{ ref('bp_overdraft_limit_periods_v2') }}
+from "n26"."credit_risk_playground"."bp_overdraft_limit_periods_v2"
 where rev_timestamp <= date_add('minute', -1, date_add('day', 1, last_day(date_add('month', -1, last_day(getdate())))) ) and amount_cents > 0 
 group by 
 user_id 
@@ -30,14 +33,14 @@ user_id
 select parent_account_key
 , min(due_date) as first_repayment
 , max(due_date) as last_repayment
-from  {{ source('public', 'mmbr_repayment') }}  
+from  "n26"."public"."mmbr_repayment"  
 group by 1
 )
 
 , forbearance_last_year as (
 select distinct 
 instrument_id
-from {{ ref('bp_forbearance_m_v2_v2') }} f 
+from "n26"."credit_risk_playground"."bp_forbearance_m_v2_v2" f 
 where f.credit_creation_date::date between date_add('month', -12
                                                     , last_day(date_add('month', -1, last_day(getdate())))
                                                     ) and last_day(date_add('month', -1, last_day(getdate())))
@@ -79,8 +82,8 @@ from (
    , is_default
    from credit_risk_playground.bp_retail_provisions_stg_v5_pre_updated_v2
    where reportdate::date > '2025-05-31'::date 
-) c --{{ ref('bp_retail_provisions_stg_v5_pre_updated_v2') }} c 
-left join {{ ref('bp_forbearance_m_v2_v2') }} f on c.instrument_id = f.instrument_id and c.reportdate::date = f.reportdate::date
+) c --"n26"."credit_risk_playground"."bp_retail_provisions_stg_v5_pre_updated_v2" c 
+left join "n26"."credit_risk_playground"."bp_forbearance_m_v2_v2" f on c.instrument_id = f.instrument_id and c.reportdate::date = f.reportdate::date
 where (c.is_default = 1) and (f.instrument_id is not null)
 group by 1
 )
@@ -162,9 +165,7 @@ c.user_id
 , c.schufa_insolvency
 , c.rep_plan_user
 
-, case when (df.user_id is not null) 
-            and (c.reportdate::date between df.default_during_forbearance_date::date and date_add('month', 12, df.default_during_forbearance_date::date)) then 1
-       else c.is_default end as is_default
+, c.is_default
 
 
 -- 6. Credit Bureau flags
@@ -1034,21 +1035,21 @@ END AS "DXAUD"
        when coalesce(c.dpd,0) > 2520 then 6935
        end as "TPDFI"
 
-from {{ ref('bp_retail_provisions_stg_v5_pre_updated_v2') }} c 
-left join {{ ref('bp_portfolio_balance_aud_m_v2') }} o on o.encoded_key = c.instrument_id and c.reportdate::date = o.reporting_date::date
-left join {{ ref('bp_overdraft_split_m_v2') }}  mll on mll.encoded_key = c.instrument_id and c.reportdate::date = mll.reporting_date::date
-left join {{ ref('bp_monitoring_pd_supermodel_v2_m_v2') }} m on m.user_id = c.user_id and m.reporting_date::date = c.reportdate::date
-left join {{ ref('bp_application_pd_supermodel_m_v2') }} pd_app on pd_app.encoded_key = c.instrument_id 
+from "n26"."credit_risk_playground"."bp_retail_provisions_stg_v5_pre_updated_v2" c 
+left join "n26"."credit_risk_playground"."bp_portfolio_balance_aud_m_v2" o on o.encoded_key = c.instrument_id and c.reportdate::date = o.reporting_date::date
+left join "n26"."credit_risk_playground"."bp_overdraft_split_m_v2"  mll on mll.encoded_key = c.instrument_id and c.reportdate::date = mll.reporting_date::date
+left join "n26"."credit_risk_playground"."bp_monitoring_pd_supermodel_v2_m_v2" m on m.user_id = c.user_id and m.reporting_date::date = c.reportdate::date
+left join "n26"."credit_risk_playground"."bp_application_pd_supermodel_m_v2" pd_app on pd_app.encoded_key = c.instrument_id 
                                                                 and  pd_app.reporting_date::date = c.reportdate::date
                                                                 and c.product_flag not in ('Unarranged Overdraft', 'RP_2')
-left join {{ ref('bp_application_pd_supermodel_m_ad_v2') }} pd_app_ad on pd_app_ad.encoded_key = c.instrument_id 
+left join "n26"."credit_risk_playground"."bp_application_pd_supermodel_m_ad_v2" pd_app_ad on pd_app_ad.encoded_key = c.instrument_id 
                                                                 and  pd_app_ad.reporting_date::date = c.reportdate::date
                                                                 and c.product_flag not in ('Unarranged Overdraft', 'RP_2')
-left join {{ ref('bp_default_dunning_m_v2') }} d on d.user_id = c.user_id  and d.reporting_date::date = c.reportdate::date   
-left join {{ ref('bp_default_internal_insolvency_v2_m_v2') }} ins on ins.user_id = c.user_id and ins.reporting_date::date = c.reportdate::date
-left join {{ ref('bp_default_credit_bureau_insolvency_v3_m_v2') }} sch on sch.user_id = c.user_id and sch.reporting_date::date = c.reportdate::date
-left join {{ ref('bp_repayment_plan_ph1_m_v2') }} rp on rp.user_id = c.user_id and rp.reporting_date::date = c.reportdate::date
-left join {{ ref('bp_credit_bureau_rating_m_v2') }} schr on schr.user_id = c.user_id and schr.reporting_date::date = c.reportdate::date
+left join "n26"."credit_risk_playground"."bp_default_dunning_m_v2" d on d.user_id = c.user_id  and d.reporting_date::date = c.reportdate::date   
+left join "n26"."credit_risk_playground"."bp_default_internal_insolvency_v2_m_v2" ins on ins.user_id = c.user_id and ins.reporting_date::date = c.reportdate::date
+left join "n26"."credit_risk_playground"."bp_default_credit_bureau_insolvency_v3_m_v2" sch on sch.user_id = c.user_id and sch.reporting_date::date = c.reportdate::date
+left join "n26"."credit_risk_playground"."bp_repayment_plan_ph1_m_v2" rp on rp.user_id = c.user_id and rp.reporting_date::date = c.reportdate::date
+left join "n26"."credit_risk_playground"."bp_credit_bureau_rating_m_v2" schr on schr.user_id = c.user_id and schr.reporting_date::date = c.reportdate::date
 left join first_enabled_date f on f.encoded_key = c.instrument_id and f.user_id = c.user_id and f.first_creation_date::date <= last_day(date_add('month', -1, last_day(getdate())))
 left join credit_risk_playground.porto_pit_app_users pd_sc on pd_sc.instrument_id = c.instrument_id 
                                                               and c.product_flag in ('CC', 'TBIL')
@@ -1060,16 +1061,16 @@ left join credit_risk_playground.porto_pit_app_users pd_od on pd_od.user_id = c.
                                                                and pd_od.credit_creation_date::date = coalesce(f.first_creation_date::date,last_day(date_add('month', -1, last_day(getdate()))))
                                                                
 left join repayment r on r.parent_account_key = c.instrument_id
-left join  {{ source('dbt', 'zrh_users') }} z on z.user_id = c.user_id 
-left join {{ ref('bp_loan_contract_information_m_v2') }} li on li.encoded_key = c.instrument_id and li.reporting_date::date = c.reportdate::date
-left join {{ source('public', 'mmbr_savings_account') }} s on s.encoded_key = c.instrument_id and s.account_type = 'CURRENT_ACCOUNT'
-left join {{ ref('bp_garnishment_m_v2') }} g on g.user_id = c.user_id 
+left join  "n26"."dbt"."zrh_users" z on z.user_id = c.user_id 
+left join "n26"."credit_risk_playground"."bp_loan_contract_information_m_v2" li on li.encoded_key = c.instrument_id and li.reporting_date::date = c.reportdate::date
+left join "n26"."public"."mmbr_savings_account" s on s.encoded_key = c.instrument_id and s.account_type = 'CURRENT_ACCOUNT'
+left join "n26"."credit_risk_playground"."bp_garnishment_m_v2" g on g.user_id = c.user_id 
                                              and c.reportdate::date = g.reporting_date::date  
-left join {{ ref('bp_social_benefits_v2_m_v2') }} sb on sb.user_id = c.user_id and sb.reporting_date::date = c.reportdate::date
-left join {{ ref('bp_p_accounts_v2') }} pa on pa.user_id = c.user_id and last_day(date_add('month', -1, last_day(getdate()))) between pa.rev_timestamp and pa.end_timestamp
-left join {{ ref('bp_hrc_m_v2') }} hrc on c.user_id = hrc.user_id and c.reportdate::date = hrc.reporting_date::date
+left join "n26"."credit_risk_playground"."bp_social_benefits_v2_m_v2" sb on sb.user_id = c.user_id and sb.reporting_date::date = c.reportdate::date
+left join "n26"."credit_risk_playground"."bp_p_accounts_v2" pa on pa.user_id = c.user_id and last_day(date_add('month', -1, last_day(getdate()))) between pa.rev_timestamp and pa.end_timestamp
+left join "n26"."credit_risk_playground"."bp_hrc_m_v2" hrc on c.user_id = hrc.user_id and c.reportdate::date = hrc.reporting_date::date
 left join forbearance_last_year fly on fly.instrument_id = c.instrument_id 
-left join {{ ref('bp_forbearance_m_v2_v2') }} fb on fb.instrument_id = c.instrument_id and c.reportdate::date = fb.reportdate::date
+left join "n26"."credit_risk_playground"."bp_forbearance_m_v2_v2" fb on fb.instrument_id = c.instrument_id and c.reportdate::date = fb.reportdate::date
 left join latest_default_during_forbearance df on df.user_id = c.user_id
 left join default_last_12_months ld on ld.user_id = c.user_id
 where c.reportdate::date = last_day(date_add('month', -1, last_day(getdate())))
@@ -1080,6 +1081,7 @@ select *
 , getdate() as etl_updated
 , coalesce(instrument_id, '') || coalesce(etl_updated::varchar, '') as unique_key
 from total 
-{% if is_incremental() %}
-where etl_updated > (select max(etl_updated) from {{this}})
-{% endif %}
+
+  );
+  
+  
