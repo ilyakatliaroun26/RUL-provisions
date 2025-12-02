@@ -110,5 +110,3 @@ select *
 , getdate() as etl_updated
 , coalesce(user_id, '') || coalesce(etl_updated::varchar, '') as unique_key
 from schufa_curr
-
-where etl_updated > (select max(etl_updated) from "n26"."credit_risk_playground"."bp_default_credit_bureau_insolvency_v3_m_v2")

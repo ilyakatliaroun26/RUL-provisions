@@ -1,13 +1,16 @@
 
-{{
-  config(
-    materialized = "incremental",
-    dist='user_id',
-    sort='reporting_date',
-    unique_key="unique_key",
-    tags=["retail_provisions"]
-    )
-}}
+      
+  
+    
+
+  create  table
+    "n26"."credit_risk_playground"."bp_monitoring_pd_supermodel_09_2025"
+    
+    diststyle key distkey (user_id)
+    
+      compound sortkey(reporting_date)
+  as (
+    
 
 -- dbt run --full-refresh --select bp_monitoring_pd_supermodel_v2_m_v2 (first time)
 -- dbt run --select bp_monitoring_pd_supermodel_v2_m_v2 (other runs)
@@ -18,7 +21,7 @@ portfolio as (
 select distinct 
 user_id 
 from credit_risk_playground.bp_portfolio_customers_aud_m_v2
-where reporting_date::date = last_day(date_add('month', -1 , last_day(getdate()))) 
+where reporting_date::date = last_day(date_add('month', -2 , last_day(getdate())))
 
 )
 
@@ -28,7 +31,7 @@ where reporting_date::date = last_day(date_add('month', -1 , last_day(getdate())
         , z.country_tnc as tnc_country
         , ps.created as calculated_at
         , row_number() over (
-            partition by ps.user_id, pm.name || '-' || pm.version
+            partition by ps.user_id, ps.model_version
             order by 
             ps.created,
                 case 
@@ -39,18 +42,18 @@ where reporting_date::date = last_day(date_add('month', -1 , last_day(getdate())
                     when ps.score_type = 'application_OD' then 5
                     else 6
                 end
-        ) as row_num
+        ) as row_num 
         , pd::float as pd 
         , rating_class
         , ps.meta.pit_calibration_beta as beta
         , ps.meta.insample_calibrated_pd::float as internal_pd
-    from etl_reporting.porto_score ps
-    inner join etl_reporting.porto_model pm on pm.id = ps.model_id
+    from dbt_pii.credit_score_audit_log ps
     inner join portfolio p on p.user_id = ps.user_id
     inner join dbt.zrh_users z on z.user_id = ps.user_id
-    where pm.name || '-' || pm.version = 'unified-1.0'
-      --    and ps.score_type in ('behavioral_unarranged', 'behavioral')
-    and ps.created::date = last_day(date_add('month', -1 , last_day(getdate()))) 
+    where ps.model_name = 'PORTO'
+          and ps.model_version = 'unified-1.0'
+--          and ps.score_type in ('behavioral_unarranged', 'behavioral')
+          and ps.created::date = last_day(date_add('month', -2 , last_day(getdate()))) 
 )
 
 , porto as (
@@ -100,13 +103,14 @@ from porto p
     , internal_pd
     , last_day(
                     date_add('month'
-                            , -1
+                            , -2
                             , last_day(getdate())
                             )
                             ) as reporting_date
     , getdate() as etl_updated
     , coalesce(user_id, '') || coalesce(getdate()::varchar, '') as unique_key
     from porto_fixed l
-    {% if is_incremental() %}
-    where reporting_date > (select max(reporting_date) from {{this}})
-    {% endif %}
+    
+  );
+  
+  

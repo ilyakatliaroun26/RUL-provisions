@@ -1,9 +1,4 @@
- {{
-    config(
-    materialized = "table",
-    tags=["retail_provisions"]
-    )
-}}
+
 
  
  with 

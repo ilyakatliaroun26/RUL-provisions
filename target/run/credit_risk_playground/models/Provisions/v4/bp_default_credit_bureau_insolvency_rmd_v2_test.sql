@@ -1,9 +1,14 @@
-{{
-    config(
-    materialized = "table",
-    tags=["retail_provisions"]
-    )
-}}
+
+  
+    
+
+  create  table
+    "n26"."credit_risk_playground"."bp_default_credit_bureau_insolvency_rmd_v2_test__dbt_tmp"
+    
+    
+    
+  as (
+    
 
 
 with 
@@ -40,3 +45,5 @@ raw_merkmal_description as (SELECT  ca.user_id,
 
      select * 
      from raw_merkmal_description
+  );
+  

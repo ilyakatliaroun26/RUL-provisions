@@ -19,7 +19,7 @@ where reporting_date::date = last_day(date_add('month', -1 , last_day(getdate())
         , z.country_tnc as tnc_country
         , ps.created as calculated_at
         , row_number() over (
-            partition by ps.user_id, ps.model_version
+            partition by ps.user_id, pm.name || '-' || pm.version
             order by 
             ps.created,
                 case 
@@ -35,13 +35,13 @@ where reporting_date::date = last_day(date_add('month', -1 , last_day(getdate())
         , rating_class
         , ps.meta.pit_calibration_beta as beta
         , ps.meta.insample_calibrated_pd::float as internal_pd
-    from dbt_pii.credit_score_audit_log ps
+    from etl_reporting.porto_score ps
+    inner join etl_reporting.porto_model pm on pm.id = ps.model_id
     inner join portfolio p on p.user_id = ps.user_id
     inner join dbt.zrh_users z on z.user_id = ps.user_id
-    where ps.model_name = 'PORTO'
-          and ps.model_version = 'unified-1.0'
+    where pm.name || '-' || pm.version = 'unified-1.0'
       --    and ps.score_type in ('behavioral_unarranged', 'behavioral')
-          and ps.created::date = last_day(date_add('month', -1 , last_day(getdate()))) 
+    and ps.created::date = last_day(date_add('month', -1 , last_day(getdate()))) 
 )
 
 , porto as (

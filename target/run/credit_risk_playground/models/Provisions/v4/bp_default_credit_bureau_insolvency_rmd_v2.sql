@@ -40,7 +40,7 @@ raw_merkmal_description as (SELECT  ca.user_id,
      inner join credit_risk_playground.bp_default_credit_bureau_insolvency_max_date_v2 m
         on m.user_id = ca.user_id
         and ca.audit_rev_timestamp::timestamp = m.rev_timestamp::timestamp
-     --WHERE merkmal IS NOT NULL
+     WHERE provider in ('SCHUFA', 'CRIF')
      )
 
      select * 

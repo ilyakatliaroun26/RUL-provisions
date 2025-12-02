@@ -1,12 +1,16 @@
-{{
-  config(
-    materialized = "incremental",
-    dist='user_id',
-    sort='etl_updated',
-    unique_key="unique_key",
-    tags=["retail_provisions"]
-    )
-}}
+
+      
+  
+    
+
+  create  table
+    "n26"."credit_risk_playground"."bp_credit_bureau_rating_m_v2_test"
+    
+    diststyle key distkey (user_id)
+    
+      compound sortkey(etl_updated)
+  as (
+    
 
 -- dbt run --full-refresh --select bp_credit_bureau_rating_m_v2 (first time)
 -- dbt run --select bp_credit_bureau_rating_m_v2 (other runs)
@@ -57,17 +61,17 @@ select distinct  a.user_id
                     , getdate() as etl_updated
                     , coalesce(a.user_id, '') || coalesce(etl_updated::varchar, '') as unique_key 
            from californium_credit_score a 
-           inner join {{ source('dbt', 'zrh_users') }} z using(user_id)
+           inner join "n26"."dbt"."zrh_users" z using(user_id)
            inner join ( select 
                        a.user_id
                         , b.rev_timestamp
                         , max(a.end_timestamp) as end_timestamp
                from californium_credit_score a
-               inner join {{ source('dbt', 'zrh_users') }} z using(user_id)
+               inner join "n26"."dbt"."zrh_users" z using(user_id)
                inner join (select z.user_id
                                   , max(rev_timestamp::date) as rev_timestamp
                            from californium_credit_score ccra
-                           inner join {{ source('dbt', 'zrh_users') }} z using(user_id)
+                           inner join "n26"."dbt"."zrh_users" z using(user_id)
                            where (
                                   (
                                    (z.country_tnc = 'DEU' or z.country_tnc is null) 
@@ -144,6 +148,7 @@ select distinct  a.user_id
 
   select * 
   from total 
-    {% if is_incremental() %}
-  where  etl_updated > (select max(etl_updated) from {{this}})
-    {% endif %}
+    
+  );
+  
+  

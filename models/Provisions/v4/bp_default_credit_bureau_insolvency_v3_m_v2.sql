@@ -1,5 +1,3 @@
- 
- 
 {{
   config(
     materialized = "incremental",
@@ -30,7 +28,9 @@ select *
 , requested_on as rev_timestamp
 , coalesce(lead(requested_on - interval '0.000001 second', 1) over (partition by user_id order by requested_on), '2100-01-01') as end_timestamp
 from private.californium_credit_score_audit_log
+WHERE provider in ('SCHUFA', 'CRIF')
 order by user_id, requested_on
+
 )
 
 , californium_credit_score as (
@@ -44,6 +44,28 @@ where m.end_time::date = last_day(
                                         )
                                         ) 
 )
+
+, bureacratium_credit_score_stg as (
+select * 
+, requested_on as rev_timestamp
+, coalesce(lead(requested_on - interval '0.000001 second', 1) over (partition by user_id order by requested_on), '2100-01-01') as end_timestamp
+from private.bureaucratium_user_credit_risk_profile_historical
+WHERE provider in ('EXPERIAN')
+order by user_id, requested_on
+)
+
+, bureacratium_credit_score as (
+select ccra.* 
+from bureacratium_credit_score_stg ccra
+INNER JOIN {{ source('public', 'dwh_cohort_dates') }} m ON m.end_time between ccra.rev_timestamp and  ccra.end_timestamp
+where m.end_time::date = last_day(
+                                date_add('month'
+                                        , -1
+                                        , last_day(getdate())
+                                        )
+                                        ) 
+)
+
 
 , schufa_curr as (
 select distinct
@@ -71,6 +93,19 @@ select distinct
             and ccra.provider like 'CRIF%'
             and ccra.rating in ('P'))
        ) 
+
+union all 
+
+select distinct 
+user_id 
+, last_day(
+        date_add('month'
+                , -1
+                , last_day(getdate())
+                )
+                )  as rev_timestamp
+from bureacratium_credit_score
+where default_status = true
 )
 
 select * 

@@ -1,9 +1,14 @@
- {{
-    config(
-    materialized = "table",
-    tags=["retail_provisions"]
-    )
-}}
+
+  
+    
+
+  create  table
+    "n26"."credit_risk_playground"."bp_default_credit_bureau_insolvency_me_v2_test__dbt_tmp"
+    
+    
+    
+  as (
+    
 
  
  with 
@@ -34,3 +39,5 @@
 
 select * 
 from merkmal_exploded
+  );
+  

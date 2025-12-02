@@ -34,6 +34,7 @@ csr.audit_rev_timestamp::timestamp <= date_add('minute'
                                                                 ) 
                                                            )
 
+and  provider in ('SCHUFA', 'CRIF')
 GROUP BY csr.user_id
 
 )

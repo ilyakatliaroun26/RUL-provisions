@@ -4,14 +4,34 @@
 -- dbt run --select bp_credit_bureau_rating_m_v2 (other runs)
 
 with 
-californium_credit_score as (
+credit_bureau_scores as (
+select 
+user_id 
+, rating 
+, provider
+, requested_on
+from private.californium_credit_score_audit_log
+where provider in ('SCHUFA', 'CRIF')
+
+union all 
+
+select 
+user_id 
+, credit_grade as rating 
+, provider
+, requested_on
+from private.bureaucratium_user_credit_risk_profile_historical
+where provider in ('EXPERIAN')
+)
+
+, californium_credit_score as (
 select 
 user_id 
 , rating 
 , provider
 , requested_on as rev_timestamp
 , coalesce(lead(requested_on - interval '0.000001 second', 1) over (partition by user_id order by requested_on), '2100-01-01') as end_timestamp
-from private.californium_credit_score_audit_log
+from credit_bureau_scores
 order by user_id, requested_on
 )
 
@@ -51,6 +71,13 @@ select distinct  a.user_id
                                     z.country_tnc = 'AUT' 
                                     and ccra.provider like 'CRIF%'
                                     )
+                                  
+                                  or 
+
+                                  (
+                                    z.country_tnc = 'ESP' 
+                                    and ccra.provider like 'EXPERIAN%'
+                                    )
                                   )
                                  and rev_timestamp::date <= last_day(
                                                                 date_add('month'
@@ -71,6 +98,14 @@ select distinct  a.user_id
                                     z.country_tnc = 'AUT' 
                                     and a.provider like 'CRIF%'
                                     )
+                                  
+
+                                   or 
+
+                                  (
+                                    z.country_tnc = 'ESP' 
+                                    and a.provider like 'EXPERIAN%'
+                                    )
                                   )
                 group by 
                 a.user_id
@@ -87,6 +122,13 @@ select distinct  a.user_id
                     (
                       z.country_tnc = 'AUT' 
                       and a.provider like 'CRIF%'
+                     )
+                    
+                     or 
+
+                    (
+                      z.country_tnc = 'ESP' 
+                      and a.provider like 'EXPERIAN%'
                      )
                     )
     )
